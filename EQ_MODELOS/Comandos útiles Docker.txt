@@ -1,0 +1,19 @@
+Listar todos los contenedores:                docker ps -a
+Listar contenedores en ejecución:             docker ps
+Listar el último contenedor creado:           docker ps -l
+Listar ID de todos los contenedores:          docker ps -aq
+Listar Imágenes:                              docker images -a
+Buscar imagen:                                docker search <nombre_imagen>
+Detener contenedor:                           docker stop <nombre_contenedor o ID>
+Eliminar contenedor:                          docker rm <nombre_contenedor o ID>
+Eliminar imagen:                              docker rmi <nombre_imagen>
+Eliminar todos los contenedores detenidos:    docker container prune
+Eliminar todas las imágenes sin usar:         docker image prune
+Construir imagen desde Dockerfile:            docker build -t <nombre_imagen>:<tag> .   (tag: identificador de versión d ela imagen)
+Ejecución de contenedor                       docker run --name <nombre_contenedor> <nombre_imagen>
+Crear y ejecutar un contenedor                
+en segundo plano:                             docker run -d --name <nombre> -p <puerto_host>:<puerto_contenedor> <imagen>
+Ver logs:                                     docker logs -f <nombre_o_id>
+Reiniciar contenedor:                         docker restart <nombre_o_id>
+Descargar Imagen:                             docker pull <imagen>:<tag>
+
