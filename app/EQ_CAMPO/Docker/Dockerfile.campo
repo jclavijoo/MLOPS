@@ -1,0 +1,26 @@
+# Imagen base con Python
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Instalar UV
+RUN pip install uv
+
+# Copiar requirements
+COPY requirements.txt .
+
+# Instalar dependencias con UV
+RUN uv pip install -r requirements.txt
+RUN uv pip install jupyter 
+
+# Copiar proyecto
+COPY . /app
+
+# Crear directorios
+RUN mkdir -p /app/models /app/data
+
+# Exponer puerto
+EXPOSE 8000
+
+# Comando
+CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]

@@ -1,0 +1,20 @@
+services:
+  eq_modelos:
+    build:
+      context: ./EQ_MODELOS
+      dockerfile: Docker/Dockerfile.modelos
+    ports:
+      - "8000:8000"
+    volumes:
+      - './models:/app/modelos_globales'
+    command: ["python", "Scripts/enviar_modelo.py"]
+ 
+  eq_campo:
+    build:
+      context: ./EQ_CAMPO
+      dockerfile: Docker/Dockerfile.campo
+    ports:
+      - "8025:8025"
+    volumes:
+      - './models:/app/modelos_globales'
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8025", "--reload"]
