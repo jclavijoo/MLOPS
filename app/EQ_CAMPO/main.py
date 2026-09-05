@@ -53,11 +53,11 @@ def load_model(model_name: str = "current_model.pkl"):
         model_type = type(current_model).__name__
         size = model_path.stat().st_size / 1024
         
-        print(f" Cargado: {model_path.name} | {model_type} | {size:.2f}KB")
+        print(f"Cargado: {model_path.name} | {model_type} | {size:.2f}KB")
         return True
         
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f" Error: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -78,7 +78,7 @@ def list_all_models() -> list:
         
         return models
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f" Error: {e}")
         return []
 
 # ============ EVENTOS ============
@@ -87,10 +87,17 @@ def list_all_models() -> list:
 async def startup():
     print(" EQ_CAMPO iniciado")
     print(f" Carpeta: {MODELS_DIR.absolute()}")
+    print(f"  Existe: {MODELS_DIR.exists()}")
+    
+    # Listar archivos
+    if MODELS_DIR.exists():
+        files = list(MODELS_DIR.glob("*.pkl"))
+        print(f"   Archivos encontrados: {[f.name for f in files]}")
+    
     load_model("current_model.pkl")
     
     models = list_all_models()
-    print(f"Modelos: {len(models)}")
+    print(f"📦 Modelos disponibles: {len(models)}")
     for m in models:
         print(f"   • {m['name']} ({m['size_kb']} KB)")
 
@@ -112,14 +119,14 @@ def get_current_model():
             "loaded": current_model is not None
         }
     else:
-        return {"error": "No encontrado"}
+        return {"error": "current_model.pkl no encontrado", "status": "error"}
 
 @app.get("/predict")
 def predict():
     load_model("current_model.pkl")
     
     if current_model is None:
-        return {"error": "No cargado"}
+        return {"error": "Modelo no cargado", "status": "error"}
     
     try:
         model_path = MODELS_DIR / "current_model.pkl"
@@ -132,17 +139,17 @@ def predict():
             "prediction": "resultado"
         }
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e), "status": "error"}
 
-@app.on_event("startup")
-async def startup():
-    print("EQ_CAMPO iniciado")
-    print(f" Buscando en: {MODELS_DIR.absolute()}")
-    print(f"  Existe carpeta: {MODELS_DIR.exists()}")
+@app.get("/status")
+def status():
+    model_path = MODELS_DIR / "current_model.pkl"
+    available_models = [m["name"] for m in list_all_models()]
     
-    # Listar archivos
-    if MODELS_DIR.exists():
-        files = list(MODELS_DIR.glob("*.pkl"))
-        print(f"   Archivos: {[f.name for f in files]}")
-    
-    load_model("current_model.pkl")
+    return StatusResponse(
+        service="EQ_CAMPO",
+        model_loaded=current_model is not None,
+        current_model=current_model_name,
+        available_models=available_models,
+        model_size=model_path.stat().st_size if model_path.exists() else 0
+    )

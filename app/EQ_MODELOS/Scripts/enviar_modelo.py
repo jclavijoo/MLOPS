@@ -16,7 +16,7 @@ model_index = 0
 
 def create_models():
     """Crea 3 modelos DIFERENTES"""
-    print("Creando 3 modelos DIFERENTES...\n")
+    print(" Creando 3 modelos DIFERENTES...\n")
     
     iris = load_iris()
     X, y = iris.data, iris.target
@@ -59,12 +59,13 @@ def initialize_models():
     all_models = sorted(list(MODELS_DIR.glob("*.pkl")))
     
     if not all_models:
-        print("No hay modelos en ./eq_models/")
+        print(" No hay modelos en ./eq_models/")
         return False
     
     SHARED_DIR.mkdir(parents=True, exist_ok=True)
     print(f"\n Encontrados {len(all_models)} modelos")
-    print(f" Iniciando rotación cada 10 segundos\n")
+    print(f" Rotando cada 10 segundos")
+    print(f"  Borrando cada 8 segundos\n")
     return True
 
 def add_model_incrementally():
@@ -74,7 +75,7 @@ def add_model_incrementally():
     try:
         if model_index >= len(all_models):
             model_index = 0
-            print("Ciclo completado, rotando nuevamente\n")
+            print(" Ciclo completado, rotando nuevamente\n")
         
         current_model = all_models[model_index]
         
@@ -94,7 +95,17 @@ def add_model_incrementally():
         model_index += 1
         
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
+
+def delete_current_model():
+    """Borra current_model.pkl cada 8 segundos"""
+    try:
+        current = SHARED_DIR / "current_model.pkl"
+        if current.exists():
+            current.unlink()
+            print(f"🗑️  Eliminado: current_model.pkl")
+    except Exception as e:
+        print(f" Error borrando: {e}")
 
 def main():
     """Flujo principal"""
@@ -106,8 +117,9 @@ def main():
     if not initialize_models():
         return
     
-    # Programar rotación
-    schedule.every(10).seconds.do(add_model_incrementally)
+    # PROGRAMAR DOS COSAS
+    schedule.every(10).seconds.do(add_model_incrementally)  # Cada 10s: nuevo modelo
+    schedule.every(8).seconds.do(delete_current_model)      # Cada 8s: borrar
     
     # Enviar el primer modelo al iniciar
     add_model_incrementally()
