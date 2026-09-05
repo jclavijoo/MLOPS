@@ -73,17 +73,22 @@ def add_model_incrementally():
     global model_index, all_models
     
     try:
+        # PRIMERO: Borrar el anterior
+        dest_current = SHARED_DIR / "current_model.pkl"
+        if dest_current.exists():
+            dest_current.unlink()
+            print(f" Eliminado: current_model.pkl")
+        
+        # LUEGO: Crear el nuevo
         if model_index >= len(all_models):
             model_index = 0
-            print(" Ciclo completado, rotando nuevamente\n")
+            print("Ciclo completado\n")
         
         current_model = all_models[model_index]
         
-        # Copiar a carpeta compartida con su nombre original
         dest = SHARED_DIR / current_model.name
         shutil.copy2(current_model, dest)
         
-        # Copiar como current_model.pkl (el que EQ_CAMPO usa)
         dest_current = SHARED_DIR / "current_model.pkl"
         shutil.copy2(current_model, dest_current)
         
@@ -95,39 +100,20 @@ def add_model_incrementally():
         model_index += 1
         
     except Exception as e:
-        print(f"Error: {e}")
-
-def delete_current_model():
-    """Borra current_model.pkl cada 8 segundos"""
-    try:
-        current = SHARED_DIR / "current_model.pkl"
-        if current.exists():
-            current.unlink()
-            print(f"🗑️  Eliminado: current_model.pkl")
-    except Exception as e:
-        print(f" Error borrando: {e}")
+        print(f" Error: {e}")
 
 def main():
-    """Flujo principal"""
-    
-    # Crear 3 modelos DIFERENTES
     create_models()
-    
-    # Inicializar lista
     if not initialize_models():
         return
     
-    # PROGRAMAR DOS COSAS
-    schedule.every(10).seconds.do(add_model_incrementally)  # Cada 10s: nuevo modelo
-    schedule.every(8).seconds.do(delete_current_model)      # Cada 8s: borrar
+    schedule.every(10).seconds.do(add_model_incrementally)
     
-    # Enviar el primer modelo al iniciar
     add_model_incrementally()
     
-    # Mantener el scheduler
     while True:
         schedule.run_pending()
         time.sleep(1)
-
-if __name__ == "__main__":
-    main()
+        
+    except Exception as e:
+        print(f"Error: {e}")
