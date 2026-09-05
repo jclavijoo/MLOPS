@@ -1,107 +1,48 @@
-# Configuración de entorno FastAPI para la API de clasificación de pingüinos
+import shutil
+import schedule
+import time
+import random
+import logging
+from pathlib import Path
 
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, field_validator
-import joblib
-import pandas as pd
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Variable global para mantener el modelo actual
-current_model = None
+MODELS_DIR = Path("./eq_models")
+SHARED_DIR = Path("./modelos_globales")
 
-
-# Carga de modelo por defecto al iniciar la API
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global current_model
+def send_model():
+    """Envía uno de los 3 modelos a la carpeta compartida cada minuto"""
     try:
-        current_model = joblib.load("models/logistic_regression.joblib")
-        print("Modelo por defecto (Logistic Regression) cargado correctamente.")
+        models = list(MODELS_DIR.glob("*.pkl"))
+        
+        if not models:
+            logger.error("❌ No hay modelos en ./eq_models/")
+            return
+        
+        selected = random.choice(models)
+        SHARED_DIR.mkdir(parents=True, exist_ok=True)
+        
+        dest = SHARED_DIR / "current_model.pkl"
+        shutil.copy2(selected, dest)
+        
+        logger.info(f"📤 Enviado: {selected.name} → modelos_globales/current_model.pkl")
+        
     except Exception as e:
-        print(f"Error al cargar el modelo inicial: {e}")
-    yield
+        logger.error(f"❌ Error: {e}")
 
-# Creación e inicialización de la instancia de FastAPI
-app = FastAPI(
-    title="Penguins API",
-    description="API para clasificación de especies de pingüinos",
-    version="1.0.0",
-    lifespan=lifespan,
-)
+def schedule_sending():
+    """Envía modelo cada minuto"""
+    schedule.every(1).minute.do(send_model)
+    
+    logger.info("⏰ EQ_MODELOS - Enviando modelo cada 1 minuto")
+    
+    # Enviar uno al iniciar
+    send_model()
+    
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
 
-
-# =========================
-# ESQUEMAS DE ENTRADA
-# =========================
-
-# Elección de modelo: 1 para Regresión Logística, 2 para Random Forest
-class ModelChoice(BaseModel):
-    model_name: int  # 1: Logistic Regression, 2: Random Forest
-
-# Esquema de entrada para la predicción de especies de pingüinos
-class PenguinInput(BaseModel):
-    island: str
-    bill_length_mm: float
-    bill_depth_mm: float
-    flipper_length_mm: float
-    body_mass_g: float
-    sex: str
-    year: int
-
-    # Normalizar en minúsculas para coincidir con el dataset de entrenamiento
-    @field_validator("sex", "island")
-    @classmethod
-    def normalize_strings(cls, v: str) -> str:
-        return v.strip().lower() if v else v
-
-
-# =========================
-# ENDPOINTS
-# =========================
-
-# Endpoint raíz para verificar el estado de la API
-@app.get("/")
-async def root():
-    return {"status": "API funcionando"}
-
-# Endpoint para realizar predicciones de especies de pingüinos
-@app.post("/Predicción")
-async def predict(data: PenguinInput):
-    global current_model
-
-    if current_model is None:
-        raise HTTPException(
-            status_code=500,
-            detail="El modelo no ha sido inicializado correctamente.",
-        )
-
-    # Convertir Pydantic model a DataFrame
-    input_dict = data.model_dump()
-
-    # Formatear 'island' a formato Title Case ('Biscoe', 'Dream', 'Torgersen') como en el CSV original
-    input_dict["island"] = input_dict["island"].title()
-
-    input_data = pd.DataFrame([input_dict])
-
-    prediction = current_model.predict(input_data)
-
-    return {"prediction": str(prediction[0])}
-
-# Endpoint para cambiar el modelo actual entre Regresión Logística y Random Forest
-@app.post("/Modelos")
-async def change_model(data: ModelChoice):
-    global current_model
-
-    if data.model_name == 1:
-        current_model = joblib.load("models/logistic_regression.joblib")
-        nombre = "Logistic Regression"
-    elif data.model_name == 2:
-        current_model = joblib.load("models/random_forest.joblib")
-        nombre = "Random Forest"
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail="Opción inválida. Usa 1 para Logistic Regression o 2 para Random Forest.",
-        )
-
-    return {"mensaje": f"Modelo cambiado con éxito a {nombre}"}
+if __name__ == "__main__":
+    schedule_sending()

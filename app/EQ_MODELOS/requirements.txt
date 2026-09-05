@@ -3,4 +3,5 @@ pandas
 scikit-learn
 fastapi
 uvicorn
+jupyter
 schedule

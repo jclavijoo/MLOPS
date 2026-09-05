@@ -1,4 +1,4 @@
-# Taller 1 - MLOps
+# Taller 2 - MLOps
 
 ## Grupo 3
 
@@ -9,5 +9,3 @@
 
 ---
 
-> [!NOTE]
-> Por favor, consulte el archivo [`INSTRUCCIONES.txt`](./INSTRUCCIONES.txt) y siga la guía paso a paso.

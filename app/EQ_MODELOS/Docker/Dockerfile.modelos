@@ -11,17 +11,17 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copia de los directorios Data y Scripts al directorio de trabajo dentro del contenedor
-COPY Data ./Data
+COPY data ./data                   
 COPY Scripts ./Scripts
 
 # Creación del directorio models dentro del contenedor (si aún no existe)
-RUN mkdir -p models
+RUN mkdir -p ./models
 
 # Entrenamiento del modelo utilizando el script train.py, especificando el archivo CSV de entrada
 #  y guarda los archivos resultantes en la carpeta models.
 RUN python Scripts/train.py \
-    --csv Data/penguins.csv \
-    --output models \
+    --csv ./app/data/penguins.csv \
+    --output ./app/EQ_MODELOS/models \
     --model all
 
 # Exposición del puerto 8025 para permitir el acceso a la aplicación desde fuera del contenedor

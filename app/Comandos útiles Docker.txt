@@ -16,4 +16,4 @@ en segundo plano:                             docker run -d --name <nombre> -p <
 Ver logs:                                     docker logs -f <nombre_o_id>
 Reiniciar contenedor:                         docker restart <nombre_o_id>
 Descargar Imagen:                             docker pull <imagen>:<tag>
-
+Levantar compose:                             docker compose up 
