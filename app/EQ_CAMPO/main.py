@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
-import importlib
 import sys
 from pathlib import Path
 
@@ -12,25 +11,17 @@ app = FastAPI(
 )
 
 current_model = None
+current_model_name = "unknown"
 MODELS_DIR = Path("./modelos_globales")
 
 # ============ MODELOS PYDANTIC ============
 
 class ModelInfo(BaseModel):
-    """Información de un modelo"""
     name: str
     size_kb: float
     type: str
 
-class PredictionResponse(BaseModel):
-    """Respuesta de predicción"""
-    status: str
-    model_name: str
-    model_type: str
-    prediction: str = "resultado"
-
 class StatusResponse(BaseModel):
-    """Estado del servicio"""
     service: str
     model_loaded: bool
     current_model: str
@@ -40,33 +31,22 @@ class StatusResponse(BaseModel):
 # ============ FUNCIONES ============
 
 def load_model(model_name: str = "current_model.pkl"):
-    """Carga un modelo específico - FUERZA RECARGA DEL DISCO"""
-    global current_model
+    global current_model, current_model_name
     
     try:
         model_path = MODELS_DIR / model_name
         
         if model_path.exists():
-            # Obtener timestamp ANTES
-            timestamp_before = model_path.stat().st_mtime
-            
-            # Eliminar objeto anterior
             current_model = None
-            
-            # Cargar NUEVO del disco
             current_model = joblib.load(model_path)
+            current_model_name = model_path.name
             
-            # Obtener timestamp DESPUÉS
-            timestamp_after = model_path.stat().st_mtime
-            
-            # Información del modelo
             model_type = type(current_model).__name__
             model_size = model_path.stat().st_size / 1024
             
-            print(f" Modelo cargado: {model_name}")
+            print(f" Modelo cargado: {model_path.name}")
             print(f" Tipo: {model_type}")
             print(f" Tamaño: {model_size:.2f} KB")
-            print(f" Timestamp: {timestamp_before}")
             
             return True
         else:
@@ -74,11 +54,10 @@ def load_model(model_name: str = "current_model.pkl"):
             return False
             
     except Exception as e:
-        print(f"❌ Error cargando {model_name}: {e}")
+        print(f" Error: {e}")
         return False
 
 def list_all_models() -> list:
-    """Lista todos los modelos disponibles"""
     try:
         if not MODELS_DIR.exists():
             return []
@@ -86,7 +65,6 @@ def list_all_models() -> list:
         models = []
         for model_file in sorted(MODELS_DIR.glob("*.pkl")):
             size_kb = model_file.stat().st_size / 1024
-            
             models.append({
                 "name": model_file.name,
                 "size_kb": round(size_kb, 2),
@@ -95,85 +73,63 @@ def list_all_models() -> list:
         
         return models
     except Exception as e:
-        print(f"Error listando modelos: {e}")
+        print(f"❌ Error: {e}")
         return []
 
 # ============ EVENTOS ============
 
 @app.on_event("startup")
 async def startup():
-    print("EQ_CAMPO iniciado")
-    print(f"Carpeta de modelos: {MODELS_DIR.absolute()}")
-    
-    # Cargar modelo actual
+    print(" EQ_CAMPO iniciado")
+    print(f" Carpeta: {MODELS_DIR.absolute()}")
     load_model("current_model.pkl")
     
-    # Listar modelos disponibles
     models = list_all_models()
-    print(f"Modelos disponibles: {len(models)}")
+    print(f"Modelos: {len(models)}")
     for m in models:
-        print(f"   • {m['name']} ({m['size_kb']} KB) - [{m['type']}]")
+        print(f"   • {m['name']} ({m['size_kb']} KB)")
 
 # ============ ENDPOINTS ============
 
-@app.get("/models", tags=["Modelos"], response_model=list, summary="Listar todos los modelos disponibles")
+@app.get("/models", response_model=list)
 def get_models():
-    models = list_all_models()
-    return models
+    return list_all_models()
 
-@app.get("/current-model", tags=["Modelos"], summary="Ver modelo actual")
+@app.get("/current-model")
 def get_current_model():
     model_path = MODELS_DIR / "current_model.pkl"
     
     if model_path.exists():
         return {
-            "model_name": "current_model.pkl",
-            "type": type(current_model).__name__ if current_model else "Unknown",
+            "model_file": current_model_name,
+            "model_type": type(current_model).__name__ if current_model else "Unknown",
             "size_kb": round(model_path.stat().st_size / 1024, 2),
             "loaded": current_model is not None
         }
     else:
-        return {
-            "error": "current_model.pkl no encontrado",
-            "status": "error"
-        }
+        return {"error": "No encontrado"}
 
-@app.get("/predict", tags=["Predicciones"], summary="Hacer predicción con modelo actual")
+@app.get("/predict")
 def predict():
-    # Recargar por si cambió
     load_model("current_model.pkl")
     
     if current_model is None:
-        return {
-            "status": "error",
-            "error": "Modelo no cargado",
-            "model_loaded": False
-        }
+        return {"error": "No cargado"}
     
     try:
         model_path = MODELS_DIR / "current_model.pkl"
-        model_type = type(current_model).__name__
-        model_module = current_model.__class__.__module__
-        
-        print(f"DEBUG - Modelo actual: {model_type}")
-        print(f"DEBUG - Módulo: {model_module}")
-        print(f"DEBUG - Archivo: {model_path.name}")
         
         return {
             "status": "success",
-            "model_name": model_path.name,
-            "model_type": model_type,
-            "model_module": model_module,
-            "prediction": "resultado ejemplo",
-            "model_size_kb": round(model_path.stat().st_size / 1024, 2) if model_path.exists() else 0
+            "model_file": current_model_name,
+            "model_type": type(current_model).__name__,
+            "model_size_kb": round(model_path.stat().st_size / 1024, 2),
+            "prediction": "resultado"
         }
     except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e)
-        }
+        return {"error": str(e)}
 
-@app.get("/status", tags=["Info"], summary="Estado general del servicio", response_model=StatusResponse)
+@app.get("/status", response_model=StatusResponse)
 def status():
     model_path = MODELS_DIR / "current_model.pkl"
     available_models = [m["name"] for m in list_all_models()]
@@ -181,7 +137,7 @@ def status():
     return StatusResponse(
         service="EQ_CAMPO",
         model_loaded=current_model is not None,
-        current_model="current_model.pkl",
+        current_model=current_model_name,
         available_models=available_models,
         model_size=model_path.stat().st_size if model_path.exists() else 0
     )
