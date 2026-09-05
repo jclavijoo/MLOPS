@@ -181,8 +181,8 @@ def predict():
 
 @app.get("/status", tags=["Info"], summary="Estado general del servicio", response_model=StatusResponse)
 def status():
-     model_path = MODELS_DIR / "current_model.pkl"
-    available_models = [m["name"] for m in list_all_models()]
+    model_path = MODELS_DIR / "current_model.pkl"
+    available_models = [["name"] for m in list_all_models()]
     
     return StatusResponse(
         service="EQ_CAMPO",
