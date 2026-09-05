@@ -60,7 +60,7 @@ def main():
     if not initialize_models():
         return
     
-    schedule.every(20).seconds.do(add_model_incrementally)
+    schedule.every(60).seconds.do(add_model_incrementally)
     
     print(f"Total de modelos a copiar: {len(all_models)}")
     
