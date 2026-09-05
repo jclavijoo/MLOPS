@@ -17,7 +17,7 @@ model_index = 0
 def create_models():
     """Crea 3 modelos DIFERENTES - Limpia carpeta compartida"""
     
-    # ✅ LIMPIAR CARPETA COMPARTIDA
+    # LIMPIAR CARPETA COMPARTIDA
     SHARED_DIR.mkdir(parents=True, exist_ok=True)
     for f in SHARED_DIR.glob("*.pkl"):
         f.unlink()
@@ -38,23 +38,23 @@ def create_models():
     model1.fit(X, y)
     joblib.dump(model1, MODELS_DIR / "model_1.pkl")
     size1 = (MODELS_DIR / "model_1.pkl").stat().st_size / 1024
-    print(f"✅ model_1.pkl: {type(model1).__name__} ({size1:.2f} KB)")
+    print(f"model_1.pkl: {type(model1).__name__} ({size1:.2f} KB)")
     
     # MODELO 2: SVC
     model2 = SVC(kernel='rbf', random_state=42)
     model2.fit(X, y)
     joblib.dump(model2, MODELS_DIR / "model_2.pkl")
     size2 = (MODELS_DIR / "model_2.pkl").stat().st_size / 1024
-    print(f"✅ model_2.pkl: {type(model2).__name__} ({size2:.2f} KB)")
+    print(f"model_2.pkl: {type(model2).__name__} ({size2:.2f} KB)")
     
     # MODELO 3: KNeighbors
     model3 = KNeighborsClassifier(n_neighbors=5)
     model3.fit(X, y)
     joblib.dump(model3, MODELS_DIR / "model_3.pkl")
     size3 = (MODELS_DIR / "model_3.pkl").stat().st_size / 1024
-    print(f"✅ model_3.pkl: {type(model3).__name__} ({size3:.2f} KB)")
+    print(f"model_3.pkl: {type(model3).__name__} ({size3:.2f} KB)")
     
-    print("\n📋 Verificación final:")
+    print("\nVerificación final:")
     for name in ["model_1.pkl", "model_2.pkl", "model_3.pkl"]:
         m = joblib.load(MODELS_DIR / name)
         print(f"   {name}: {type(m).__name__}")
@@ -66,22 +66,22 @@ def initialize_models():
     all_models = sorted(list(MODELS_DIR.glob("*.pkl")))
     
     if not all_models:
-        print("❌ No hay modelos en ./eq_models/")
+        print(" No hay modelos en ./eq_models/")
         return False
     
     SHARED_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"\n📦 Encontrados {len(all_models)} modelos")
-    print(f"⏰ Iniciando rotación cada 20 segundos\n")
+    print(f"\n Encontrados {len(all_models)} modelos")
+    print(f" Iniciando rotación cada 20 segundos\n")
     return True
 
 def add_model_incrementally():
-    """Cada 20 segundos agrega un modelo nuevo"""
+    """Cada 5 segundos agrega un modelo nuevo"""
     global model_index, all_models
     
     try:
         if model_index >= len(all_models):
             model_index = 0
-            print("🔄 Ciclo completado, rotando nuevamente\n")
+            print("Ciclo completado, rotando nuevamente\n")
         
         current_model = all_models[model_index]
         
@@ -96,12 +96,12 @@ def add_model_incrementally():
         model_type = joblib.load(current_model).__class__.__name__
         size = current_model.stat().st_size / 1024
         
-        print(f"📤 [{model_index + 1}/{len(all_models)}] {current_model.name}: {model_type} ({size:.2f} KB)")
+        print(f" [{model_index + 1}/{len(all_models)}] {current_model.name}: {model_type} ({size:.2f} KB)")
         
         model_index += 1
         
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f" Error: {e}")
 
 def main():
     """Flujo principal"""
@@ -114,7 +114,7 @@ def main():
         return
     
     # Programar
-    schedule.every(20).seconds.do(add_model_incrementally)
+    schedule.every(5).seconds.do(add_model_incrementally)
     
     # Primer modelo
     add_model_incrementally()
