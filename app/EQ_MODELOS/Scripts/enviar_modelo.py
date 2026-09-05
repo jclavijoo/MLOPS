@@ -2,52 +2,94 @@ import shutil
 import schedule
 import time
 from pathlib import Path
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.datasets import load_iris
+import joblib
 
 MODELS_DIR = Path("./eq_models")
 SHARED_DIR = Path("./modelos_globales")
 
-models_copied = []
 all_models = []
 model_index = 0
 
+def create_models():
+    """Crea 3 modelos DIFERENTES"""
+    print("Creando 3 modelos DIFERENTES...\n")
+    
+    iris = load_iris()
+    X, y = iris.data, iris.target
+    
+    # Limpiar anteriores
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    for f in MODELS_DIR.glob("*.pkl"):
+        f.unlink()
+    
+    # MODELO 1: RandomForest
+    model1 = RandomForestClassifier(n_estimators=100, random_state=42)
+    model1.fit(X, y)
+    joblib.dump(model1, MODELS_DIR / "model_1.pkl")
+    size1 = (MODELS_DIR / "model_1.pkl").stat().st_size / 1024
+    print(f" model_1.pkl: {type(model1).__name__} ({size1:.2f} KB)")
+    
+    # MODELO 2: SVC
+    model2 = SVC(kernel='rbf', random_state=42)
+    model2.fit(X, y)
+    joblib.dump(model2, MODELS_DIR / "model_2.pkl")
+    size2 = (MODELS_DIR / "model_2.pkl").stat().st_size / 1024
+    print(f" model_2.pkl: {type(model2).__name__} ({size2:.2f} KB)")
+    
+    # MODELO 3: KNeighbors
+    model3 = KNeighborsClassifier(n_neighbors=5)
+    model3.fit(X, y)
+    joblib.dump(model3, MODELS_DIR / "model_3.pkl")
+    size3 = (MODELS_DIR / "model_3.pkl").stat().st_size / 1024
+    print(f" model_3.pkl: {type(model3).__name__} ({size3:.2f} KB)")
+    
+    print("\n Verificación final:")
+    for name in ["model_1.pkl", "model_2.pkl", "model_3.pkl"]:
+        m = joblib.load(MODELS_DIR / name)
+        print(f"   {name}: {type(m).__name__}")
+
 def initialize_models():
-    """Obtiene lista de todos los modelos al inicio"""
+    """Obtiene lista de todos los modelos"""
     global all_models
     
     all_models = sorted(list(MODELS_DIR.glob("*.pkl")))
     
     if not all_models:
-        print("❌ No hay modelos en ./eq_models/")
+        print("No hay modelos en ./eq_models/")
         return False
     
     SHARED_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Encontrados {len(all_models)} modelos en eq_models/")
+    print(f"\n Encontrados {len(all_models)} modelos")
+    print(f" Iniciando rotación cada 10 segundos\n")
     return True
 
 def add_model_incrementally():
-    """Cada 20 segundos agrega un modelo nuevo"""
-    global model_index, models_copied, all_models
+    """Cada 10 segundos agrega un modelo nuevo"""
+    global model_index, all_models
     
     try:
         if model_index >= len(all_models):
             model_index = 0
-            print("Enviando")
+            print("Ciclo completado, rotando nuevamente\n")
         
         current_model = all_models[model_index]
         
+        # Copiar a carpeta compartida con su nombre original
         dest = SHARED_DIR / current_model.name
         shutil.copy2(current_model, dest)
         
-        if current_model.name not in models_copied:
-            models_copied.append(current_model.name)
-        
-        print(f"Agregado: {current_model.name}")
-        print(f"Almacenados ({len(models_copied)}/{len(all_models)}): {models_copied}")
-        
+        # Copiar como current_model.pkl (el que EQ_CAMPO usa)
         dest_current = SHARED_DIR / "current_model.pkl"
         shutil.copy2(current_model, dest_current)
         
-        print(f"Usando ahora: {current_model.name}")
+        model_type = joblib.load(current_model).__class__.__name__
+        size = current_model.stat().st_size / 1024
+        
+        print(f"[{model_index + 1}/{len(all_models)}] {current_model.name}: {model_type} ({size:.2f} KB)")
         
         model_index += 1
         
@@ -57,15 +99,20 @@ def add_model_incrementally():
 def main():
     """Flujo principal"""
     
+    # Crear 3 modelos DIFERENTES
+    create_models()
+    
+    # Inicializar lista
     if not initialize_models():
         return
     
-    schedule.every(20).seconds.do(add_model_incrementally)
+    # Programar rotación
+    schedule.every(10).seconds.do(add_model_incrementally)
     
-    print(f"Total de modelos a copiar: {len(all_models)}")
-    
+    # Enviar el primer modelo al iniciar
     add_model_incrementally()
     
+    # Mantener el scheduler
     while True:
         schedule.run_pending()
         time.sleep(1)
