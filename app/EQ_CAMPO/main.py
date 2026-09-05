@@ -18,7 +18,7 @@ app = FastAPI(
 
 current_model = None
 current_model_name = "unknown"
-MODELS_DIR = Path("./modelos_globales")
+MMODELS_DIR = Path("/home/estudiante/MLOPS/app/models")
 
 # ============ MODELOS PYDANTIC ============
 
