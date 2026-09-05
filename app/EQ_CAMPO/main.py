@@ -30,7 +30,6 @@ class ModelInfo(BaseModel):
 class StatusResponse(BaseModel):
     service: str
     model_loaded: bool
-    current_model: str
     available_models: list
     model_size: int
 
