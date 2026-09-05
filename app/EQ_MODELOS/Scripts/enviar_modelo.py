@@ -108,25 +108,13 @@ def main():
         if not initialize_models():
             return
 
-        schedule.every(10).seconds.do(add_model_incrementally)
+        schedule.every(5).seconds.do(add_model_incrementally)
 
         add_model_incrementally()
 
         while True:
             schedule.run_pending()
             time.sleep(1)
-
-    create_models()
-    if not initialize_models():
-        return
-    
-    schedule.every(5).seconds.do(add_model_incrementally)
-    
-    add_model_incrementally()
-    
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
         
     except Exception as e:
         print(f"Error: {e}")
