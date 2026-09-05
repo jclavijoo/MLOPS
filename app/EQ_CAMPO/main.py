@@ -1,14 +1,8 @@
-import gc
-from pathlib import Path
 from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
-
-# Importar explícitamente las clases para que joblib reconozca los tipos de modelos
-import sklearn
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
-from sklearn.neighbors import KNeighborsClassifier
+import sys
+from pathlib import Path
 
 app = FastAPI(
     title="EQ_CAMPO",
@@ -18,7 +12,7 @@ app = FastAPI(
 
 current_model = None
 current_model_name = "unknown"
-MMODELS_DIR = Path("/home/estudiante/MLOPS/app/models")
+MODELS_DIR = Path("./modelos_globales")
 
 # ============ MODELOS PYDANTIC ============
 
@@ -30,48 +24,42 @@ class ModelInfo(BaseModel):
 class StatusResponse(BaseModel):
     service: str
     model_loaded: bool
+    current_model: str
     available_models: list
     model_size: int
 
 # ============ FUNCIONES ============
 
-def load_model(model_name: str = "current_model.pkl") -> bool:
-    """Carga un modelo forzando la lectura directa del archivo y liberando memoria"""
+def load_model(model_name: str = "current_model.pkl"):
+    """Carga un modelo - FUERZA RECARGA"""
     global current_model, current_model_name
     
     try:
         model_path = MODELS_DIR / model_name
         
         if not model_path.exists():
-            print(f"❌ {model_path} NO EXISTE")
+            print(f" {model_path} NO EXISTE")
             print(f"   Buscando en: {MODELS_DIR.absolute()}")
             print(f"   Contenido: {list(MODELS_DIR.glob('*'))}")
-            current_model = None
-            current_model_name = "unknown"
             return False
         
-        # Liberar la referencia previa del recolector de basura
-        if current_model is not None:
-            del current_model
-            current_model = None
-            gc.collect()
+        # Limpiar
+        current_model = None
         
-        # Leer los bytes directamente para evitar bloqueos/caché del sistema de archivos
-        with open(model_path, "rb") as f:
-            current_model = joblib.load(f)
-            
+        # Cargar
+        current_model = joblib.load(model_path)
         current_model_name = model_path.name
+        
         model_type = type(current_model).__name__
         size = model_path.stat().st_size / 1024
         
-        print(f"✅ Cargado: {model_path.name} | Tipo: {model_type} | {size:.2f} KB")
+        print(f"Cargado: {model_path.name} | {model_type} | {size:.2f}KB")
         return True
         
     except Exception as e:
-        print(f"❌ Error al cargar el modelo: {e}")
+        print(f" Error: {e}")
         import traceback
         traceback.print_exc()
-        current_model = None
         return False
 
 def list_all_models() -> list:
@@ -90,22 +78,28 @@ def list_all_models() -> list:
         
         return models
     except Exception as e:
-        print(f"❌ Error al listar modelos: {e}")
+        print(f" Error: {e}")
         return []
 
 # ============ EVENTOS ============
 
 @app.on_event("startup")
 async def startup():
-    print("🚀 EQ_CAMPO iniciado")
-    print(f"📂 Buscando en: {MODELS_DIR.absolute()}")
-    print(f"📂 Existe carpeta: {MODELS_DIR.exists()}")
+    print(" EQ_CAMPO iniciado")
+    print(f" Carpeta: {MODELS_DIR.absolute()}")
+    print(f"  Existe: {MODELS_DIR.exists()}")
     
+    # Listar archivos
     if MODELS_DIR.exists():
         files = list(MODELS_DIR.glob("*.pkl"))
-        print(f"   Archivos en carpeta: {[f.name for f in files]}")
+        print(f"   Archivos encontrados: {[f.name for f in files]}")
     
     load_model("current_model.pkl")
+    
+    models = list_all_models()
+    print(f" Modelos disponibles: {len(models)}")
+    for m in models:
+        print(f"   • {m['name']} ({m['size_kb']} KB)")
 
 # ============ ENDPOINTS ============
 
@@ -113,13 +107,12 @@ async def startup():
 def get_models():
     return list_all_models()
 
-@app.get("/predict")
+@app.get("/Modelo Actual")
 def predict():
-    # Revisa y recarga el archivo actualizado en cada petición
-    success = load_model("current_model.pkl")
+    load_model("current_model.pkl")
     
-    if not success or current_model is None:
-        return {"error": "Modelo no cargado o no encontrado"}
+    if current_model is None:
+        return {"error": "Modelo no cargado", "status": "error"}
     
     try:
         model_path = MODELS_DIR / "current_model.pkl"
@@ -132,4 +125,4 @@ def predict():
             "prediction": "resultado"
         }
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e), "status": "error"}
