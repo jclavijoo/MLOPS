@@ -4,10 +4,8 @@ WORKDIR /app
  
 RUN pip install uv
  
-COPY pyproject.toml uv.lock ./
- 
-RUN uv sync
- 
+RUN uv pip install -r requirements.txt
+
 COPY Scripts ./Scripts
 COPY eq_models ./eq_models
  
