@@ -31,30 +31,35 @@ class StatusResponse(BaseModel):
 # ============ FUNCIONES ============
 
 def load_model(model_name: str = "current_model.pkl"):
+    """Carga un modelo - FUERZA RECARGA"""
     global current_model, current_model_name
     
     try:
         model_path = MODELS_DIR / model_name
         
-        if model_path.exists():
-            current_model = None
-            current_model = joblib.load(model_path)
-            current_model_name = model_path.name
-            
-            model_type = type(current_model).__name__
-            model_size = model_path.stat().st_size / 1024
-            
-            print(f" Modelo cargado: {model_path.name}")
-            print(f" Tipo: {model_type}")
-            print(f" Tamaño: {model_size:.2f} KB")
-            
-            return True
-        else:
-            print(f"{model_name} no encontrado")
+        if not model_path.exists():
+            print(f" {model_path} NO EXISTE")
+            print(f"   Buscando en: {MODELS_DIR.absolute()}")
+            print(f"   Contenido: {list(MODELS_DIR.glob('*'))}")
             return False
-            
+        
+        # Limpiar
+        current_model = None
+        
+        # Cargar
+        current_model = joblib.load(model_path)
+        current_model_name = model_path.name
+        
+        model_type = type(current_model).__name__
+        size = model_path.stat().st_size / 1024
+        
+        print(f" Cargado: {model_path.name} | {model_type} | {size:.2f}KB")
+        return True
+        
     except Exception as e:
-        print(f" Error: {e}")
+        print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def list_all_models() -> list:
@@ -129,15 +134,15 @@ def predict():
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/status", response_model=StatusResponse)
-def status():
-    model_path = MODELS_DIR / "current_model.pkl"
-    available_models = [m["name"] for m in list_all_models()]
+@app.on_event("startup")
+async def startup():
+    print("EQ_CAMPO iniciado")
+    print(f" Buscando en: {MODELS_DIR.absolute()}")
+    print(f"  Existe carpeta: {MODELS_DIR.exists()}")
     
-    return StatusResponse(
-        service="EQ_CAMPO",
-        model_loaded=current_model is not None,
-        current_model=current_model_name,
-        available_models=available_models,
-        model_size=model_path.stat().st_size if model_path.exists() else 0
-    )
+    # Listar archivos
+    if MODELS_DIR.exists():
+        files = list(MODELS_DIR.glob("*.pkl"))
+        print(f"   Archivos: {[f.name for f in files]}")
+    
+    load_model("current_model.pkl")
