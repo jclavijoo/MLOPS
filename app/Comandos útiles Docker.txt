@@ -17,3 +17,4 @@ Ver logs:                                     docker logs -f <nombre_o_id>
 Reiniciar contenedor:                         docker restart <nombre_o_id>
 Descargar Imagen:                             docker pull <imagen>:<tag>
 Levantar compose:                             docker compose -f <archivo.yaml> up 
+Detener compose:                              docker compose -f <archivo.yaml> down
