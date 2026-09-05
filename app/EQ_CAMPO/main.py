@@ -40,33 +40,37 @@ class StatusResponse(BaseModel):
 # ============ FUNCIONES ============
 
 def load_model(model_name: str = "current_model.pkl"):
-    """Carga un modelo específico - FORZAR RELOAD"""
+    """Carga un modelo específico - FUERZA RECARGA DEL DISCO"""
     global current_model
     
     try:
         model_path = MODELS_DIR / model_name
         
         if model_path.exists():
-            # Limpiar cache
-            if 'joblib' in sys.modules:
-                importlib.reload(sys.modules['joblib'])
+            # Obtener timestamp ANTES
+            timestamp_before = model_path.stat().st_mtime
             
-            # Descargar modelo anterior completamente
+            # Eliminar objeto anterior
             current_model = None
             
-            # Cargar nuevo
+            # Cargar NUEVO del disco
             current_model = joblib.load(model_path)
             
-            # Obtener tipo real
-            model_type = type(current_model).__name__
+            # Obtener timestamp DESPUÉS
+            timestamp_after = model_path.stat().st_mtime
             
-            print(f"✅ Modelo cargado: {model_name}")
-            print(f"   Tipo: {model_type}")
-            print(f"   Clase: {current_model.__class__.__module__}.{model_type}")
+            # Información del modelo
+            model_type = type(current_model).__name__
+            model_size = model_path.stat().st_size / 1024
+            
+            print(f" Modelo cargado: {model_name}")
+            print(f" Tipo: {model_type}")
+            print(f" Tamaño: {model_size:.2f} KB")
+            print(f" Timestamp: {timestamp_before}")
             
             return True
         else:
-            print(f"⚠️ {model_name} no encontrado")
+            print(f"{model_name} no encontrado")
             return False
             
     except Exception as e:
@@ -91,22 +95,22 @@ def list_all_models() -> list:
         
         return models
     except Exception as e:
-        print(f"❌ Error listando modelos: {e}")
+        print(f"Error listando modelos: {e}")
         return []
 
 # ============ EVENTOS ============
 
 @app.on_event("startup")
 async def startup():
-    print("🚀 EQ_CAMPO iniciado")
-    print(f"📂 Carpeta de modelos: {MODELS_DIR.absolute()}")
+    print("EQ_CAMPO iniciado")
+    print(f"Carpeta de modelos: {MODELS_DIR.absolute()}")
     
     # Cargar modelo actual
     load_model("current_model.pkl")
     
     # Listar modelos disponibles
     models = list_all_models()
-    print(f"📦 Modelos disponibles: {len(models)}")
+    print(f"Modelos disponibles: {len(models)}")
     for m in models:
         print(f"   • {m['name']} ({m['size_kb']} KB) - [{m['type']}]")
 
@@ -124,7 +128,7 @@ def get_current_model():
     if model_path.exists():
         return {
             "model_name": "current_model.pkl",
-            "type": type(current_model) if current_model else "Unknown",
+            "type": type(current_model).__name__ if current_model else "Unknown",
             "size_kb": round(model_path.stat().st_size / 1024, 2),
             "loaded": current_model is not None
         }
