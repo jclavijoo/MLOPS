@@ -1,48 +1,74 @@
 import shutil
 import schedule
 import time
-import random
-import logging
 from pathlib import Path
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 MODELS_DIR = Path("./eq_models")
 SHARED_DIR = Path("./modelos_globales")
 
-def send_model():
-    """Envía uno de los 3 modelos a la carpeta compartida cada minuto"""
+models_copied = []
+all_models = []
+model_index = 0
+
+def initialize_models():
+    """Obtiene lista de todos los modelos al inicio"""
+    global all_models
+    
+    all_models = sorted(list(MODELS_DIR.glob("*.pkl")))
+    
+    if not all_models:
+        print("❌ No hay modelos en ./eq_models/")
+        return False
+    
+    SHARED_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"Encontrados {len(all_models)} modelos en eq_models/")
+    return True
+
+def add_model_incrementally():
+    """Cada 20 segundos agrega un modelo nuevo"""
+    global model_index, models_copied, all_models
+    
     try:
-        models = list(MODELS_DIR.glob("*.pkl"))
+        if model_index >= len(all_models):
+            model_index = 0
+            print("Enviando")
         
-        if not models:
-            logger.error("❌ No hay modelos en ./eq_models/")
-            return
+        current_model = all_models[model_index]
         
-        selected = random.choice(models)
-        SHARED_DIR.mkdir(parents=True, exist_ok=True)
+        dest = SHARED_DIR / current_model.name
+        shutil.copy2(current_model, dest)
         
-        dest = SHARED_DIR / "current_model.pkl"
-        shutil.copy2(selected, dest)
+        if current_model.name not in models_copied:
+            models_copied.append(current_model.name)
         
-        logger.info(f"📤 Enviado: {selected.name} → modelos_globales/current_model.pkl")
+        print(f"Agregado: {current_model.name}")
+        print(f"Almacenados ({len(models_copied)}/{len(all_models)}): {models_copied}")
+        
+        dest_current = SHARED_DIR / "current_model.pkl"
+        shutil.copy2(current_model, dest_current)
+        
+        print(f"Usando ahora: {current_model.name}")
+        
+        model_index += 1
         
     except Exception as e:
-        logger.error(f"❌ Error: {e}")
+        print(f"❌ Error: {e}")
 
-def schedule_sending():
-    """Envía modelo cada minuto"""
-    schedule.every(1).minute.do(send_model)
+def main():
+    """Flujo principal"""
     
-    logger.info("⏰ EQ_MODELOS - Enviando modelo cada 1 minuto")
+    if not initialize_models():
+        return
     
-    # Enviar uno al iniciar
-    send_model()
+    schedule.every(20).seconds.do(add_model_incrementally)
+    
+    print(f"Total de modelos a copiar: {len(all_models)}")
+    
+    add_model_incrementally()
     
     while True:
         schedule.run_pending()
         time.sleep(1)
 
 if __name__ == "__main__":
-    schedule_sending()
+    main()

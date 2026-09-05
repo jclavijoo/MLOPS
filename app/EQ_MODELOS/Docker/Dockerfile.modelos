@@ -1,31 +1,19 @@
-# Preinstalación de python 3.11-slim
 FROM python:3.11-slim
-
-# Definición de /app como el directorio de trabajo predeterminado dentro del contenedor
+ 
 WORKDIR /app
-
-# Copia del archivo requirements.txt al directorio de trabajo
-COPY requirements.txt .
-
-# Instalación detodas las librerías listadas en requirements.txt dentro del contenedor
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copia de los directorios Data y Scripts al directorio de trabajo dentro del contenedor
-COPY data ./data                   
+ 
+RUN pip install uv
+ 
+COPY pyproject.toml uv.lock* ./
+ 
+RUN uv sync
+ 
 COPY Scripts ./Scripts
-
-# Creación del directorio models dentro del contenedor (si aún no existe)
-RUN mkdir -p ./models
-
-# Entrenamiento del modelo utilizando el script train.py, especificando el archivo CSV de entrada
-#  y guarda los archivos resultantes en la carpeta models.
-RUN python Scripts/train.py \
-    --csv ./app/data/penguins.csv \
-    --output ./app/EQ_MODELOS/models \
-    --model all
-
-# Exposición del puerto 8025 para permitir el acceso a la aplicación desde fuera del contenedor
+COPY eq_models ./eq_models
+ 
+RUN mkdir -p ./modelos_globales
+ 
 EXPOSE 8025
-
-# Comando para ejecutar la aplicación FastAPI utilizando uvicorn, especificando el host y el puerto
-CMD ["uvicorn", "Scripts.api:app", "--host", "0.0.0.0", "--port", "8025"]
+ 
+CMD ["python", "Scripts/model_sender.py"]
+ 
