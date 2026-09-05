@@ -3,6 +3,8 @@ from pydantic import BaseModel
 import joblib
 import sys
 from pathlib import Path
+import importlib
+ 
  
 app = FastAPI(
     title="EQ_CAMPO",
