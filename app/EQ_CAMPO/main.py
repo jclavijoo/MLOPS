@@ -1,10 +1,10 @@
+import gc
+from pathlib import Path
 from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
-import sys
-from pathlib import Path
 
-# 1. IMPORTAR EXPLÍCITAMENTE LAS CLASES PARA QUE JOBLIB RECONOZCA LOS TIPOS
+# Importar explícitamente las clases para que joblib reconozca los tipos de modelos
 import sklearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
@@ -35,25 +35,28 @@ class StatusResponse(BaseModel):
 
 # ============ FUNCIONES ============
 
-def load_model(model_name: str = "current_model.pkl"):
-    """Carga un modelo forzando la lectura directa del archivo"""
+def load_model(model_name: str = "current_model.pkl") -> bool:
+    """Carga un modelo forzando la lectura directa del archivo y liberando memoria"""
     global current_model, current_model_name
     
     try:
         model_path = MODELS_DIR / model_name
         
         if not model_path.exists():
-            print(f" {model_path} NO EXISTE")
+            print(f"❌ {model_path} NO EXISTE")
             print(f"   Buscando en: {MODELS_DIR.absolute()}")
             print(f"   Contenido: {list(MODELS_DIR.glob('*'))}")
             current_model = None
             current_model_name = "unknown"
             return False
         
-        # Forzar la liberación de memoria de la referencia anterior
-        current_model = None
+        # Liberar la referencia previa del recolector de basura
+        if current_model is not None:
+            del current_model
+            current_model = None
+            gc.collect()
         
-        # Leer directamente los bytes para evitar bloqueos/caché del sistema de archivos
+        # Leer los bytes directamente para evitar bloqueos/caché del sistema de archivos
         with open(model_path, "rb") as f:
             current_model = joblib.load(f)
             
@@ -61,11 +64,11 @@ def load_model(model_name: str = "current_model.pkl"):
         model_type = type(current_model).__name__
         size = model_path.stat().st_size / 1024
         
-        print(f" Cargado: {model_path.name} | Tipo: {model_type} | {size:.2f} KB")
+        print(f"✅ Cargado: {model_path.name} | Tipo: {model_type} | {size:.2f} KB")
         return True
         
     except Exception as e:
-        print(f" Error al cargar el modelo: {e}")
+        print(f"❌ Error al cargar el modelo: {e}")
         import traceback
         traceback.print_exc()
         current_model = None
@@ -87,16 +90,16 @@ def list_all_models() -> list:
         
         return models
     except Exception as e:
-        print(f" Error al listar modelos: {e}")
+        print(f"❌ Error al listar modelos: {e}")
         return []
 
 # ============ EVENTOS ============
 
 @app.on_event("startup")
 async def startup():
-    print(" EQ_CAMPO iniciado")
-    print(f" Buscando en: {MODELS_DIR.absolute()}")
-    print(f" Existe carpeta: {MODELS_DIR.exists()}")
+    print("🚀 EQ_CAMPO iniciado")
+    print(f"📂 Buscando en: {MODELS_DIR.absolute()}")
+    print(f"📂 Existe carpeta: {MODELS_DIR.exists()}")
     
     if MODELS_DIR.exists():
         files = list(MODELS_DIR.glob("*.pkl"))
@@ -112,7 +115,7 @@ def get_models():
 
 @app.get("/predict")
 def predict():
-    # Cargar explícitamente el archivo actualizado en cada petición
+    # Revisa y recarga el archivo actualizado en cada petición
     success = load_model("current_model.pkl")
     
     if not success or current_model is None:
