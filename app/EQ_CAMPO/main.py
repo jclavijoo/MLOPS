@@ -43,7 +43,7 @@ def load_model(model_name: str = "current_model.pkl") -> bool:
         model_path = MODELS_DIR / model_name
         
         if not model_path.exists():
-            print(f" {model_path} NO EXISTE")
+            print(f"❌ {model_path} NO EXISTE")
             current_model = None
             current_model_name = "unknown"
             return False
@@ -60,11 +60,11 @@ def load_model(model_name: str = "current_model.pkl") -> bool:
         model_type = type(current_model).__name__
         size = model_path.stat().st_size / 1024
         
-        print(f" Cargado: {model_path.name} | Tipo: {model_type} | {size:.2f} KB")
+        print(f"✅ Cargado: {model_path.name} | Tipo: {model_type} | {size:.2f} KB")
         return True
         
     except Exception as e:
-        print(f" Error al cargar el modelo: {e}")
+        print(f"❌ Error al cargar el modelo: {e}")
         current_model = None
         return False
 
@@ -84,15 +84,15 @@ def list_all_models() -> list:
         
         return models
     except Exception as e:
-        print(f" Error al listar modelos: {e}")
+        print(f"❌ Error al listar modelos: {e}")
         return []
 
 # ============ EVENTOS ============
 
 @app.on_event("startup")
 async def startup():
-    print(" EQ_CAMPO iniciado")
-    print(f" Buscando en: {MODELS_DIR.absolute()}")
+    print("🚀 EQ_CAMPO iniciado")
+    print(f"📂 Buscando en: {MODELS_DIR.absolute()}")
     load_model("current_model.pkl")
 
 # ============ ENDPOINTS ============
