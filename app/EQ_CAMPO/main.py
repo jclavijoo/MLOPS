@@ -4,7 +4,6 @@ import joblib
 import sys
 from pathlib import Path
 
-# 1. IMPORTAR EXPLÍCITAMENTE LAS CLASES PARA QUE JOBLIB RECONOZCA LOS TIPOS
 import sklearn
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
@@ -44,7 +43,7 @@ def load_model(model_name: str = "current_model.pkl"):
         model_path = MODELS_DIR / model_name
         
         if not model_path.exists():
-            print(f"❌ {model_path} NO EXISTE")
+            print(f" {model_path} NO EXISTE")
             print(f"   Buscando en: {MODELS_DIR.absolute()}")
             print(f"   Contenido: {list(MODELS_DIR.glob('*'))}")
             current_model = None
@@ -62,11 +61,11 @@ def load_model(model_name: str = "current_model.pkl"):
         model_type = type(current_model).__name__
         size = model_path.stat().st_size / 1024
         
-        print(f"✅ Cargado: {model_path.name} | Tipo: {model_type} | {size:.2f} KB")
+        print(f" Cargado: {model_path.name} | Tipo: {model_type} | {size:.2f} KB")
         return True
         
     except Exception as e:
-        print(f"❌ Error al cargar el modelo: {e}")
+        print(f" Error al cargar el modelo: {e}")
         import traceback
         traceback.print_exc()
         current_model = None
@@ -88,16 +87,16 @@ def list_all_models() -> list:
         
         return models
     except Exception as e:
-        print(f"❌ Error al listar modelos: {e}")
+        print(f" Error al listar modelos: {e}")
         return []
 
 # ============ EVENTOS ============
 
 @app.on_event("startup")
 async def startup():
-    print("🚀 EQ_CAMPO iniciado")
-    print(f"📂 Buscando en: {MODELS_DIR.absolute()}")
-    print(f"📂 Existe carpeta: {MODELS_DIR.exists()}")
+    print(" EQ_CAMPO iniciado")
+    print(f" Buscando en: {MODELS_DIR.absolute()}")
+    print(f" Existe carpeta: {MODELS_DIR.exists()}")
     
     if MODELS_DIR.exists():
         files = list(MODELS_DIR.glob("*.pkl"))
@@ -111,7 +110,7 @@ async def startup():
 def get_models():
     return list_all_models()
 
-@app.get("/predict")
+@app.get("/Modelo actual")
 def predict():
     # Cargar explícitamente el archivo actualizado en cada petición
     success = load_model("current_model.pkl")
